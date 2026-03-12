@@ -1608,6 +1608,7 @@ async function gerarResumoIA(s,p,el){
   const r=await fetch(N8N_SUM,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pl)});
   if(r.ok){
   const d=await r.json();
+  console.log('[CatherFlow] N8N resposta:', JSON.stringify(d));
   const resumo=d.resumo_ia||d.resumo||d.summary||d.output||d.message||(Array.isArray(d)&&d[0]?d[0].resumo_ia||d[0].resumo||'':'');
   if(resumo){
   el.textContent=resumo;
