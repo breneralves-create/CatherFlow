@@ -1114,7 +1114,7 @@ function rDash(){
 
   document.getElementById('spa').textContent=pacs.length;
 
-  const dsr=document.getElementById('dsr');
+  const dsr=document.getElementById('dsr');if(!dsr)return;
   const hoje_=hojeStr();
 
   // Todas as sessões de hoje (agendadas + realizadas)
@@ -1158,7 +1158,7 @@ function rDash(){
       +'</div>';
   }).join(''):'<div class="es"><div class="ei">📋</div><p>Nenhuma sessão hoje.</p></div>';
 
-  const dat=document.getElementById('dat');
+  const dat=document.getElementById('dat');if(!dat)return;
   const at=pacs.filter(p=>{const u=sess.filter(s=>s.paciente_id==p.id).sort((a,b)=>b.data_sessao>a.data_sessao?1:-1)[0];if(!u)return true;return Math.floor((now2-new Date(u.data_sessao+'T12:00:00'))/86400000)>14;});
   dat.innerHTML=at.length?at.slice(0,3).map((p,i)=>{
   const c=col(i);
@@ -1175,7 +1175,7 @@ function rDash(){
   +'</div>';
   }).join(''):'<div class="es"><div class="ei">✅</div><p>Todos com sessões recentes.</p></div>';
 
-  const dbday=document.getElementById('dbday');
+  const dbday=document.getElementById('dbday');if(!dbday)return;
   const hojeNum=now2.getDate();
   const mesAtual=now2.getMonth();
   const anoAtual=now2.getFullYear();
