@@ -1352,7 +1352,7 @@ async function _toggleInativarDireto(pacId){
   const p=pacs.find(x=>x.id==pacId);if(!p)return;
   const novoStatus=!p.inativo;
   try{
-    const r=await fetch(SB+'/rest/v1/pacientes?id=eq.'+pacId,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({inativo:novoStatus})});
+    const r=await fetchSB(SB+'/rest/v1/pacientes?id=eq.'+pacId,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({inativo:novoStatus})});
     if(r.ok||r.status===204){
       p.inativo=novoStatus;
       rPacs();
@@ -1458,7 +1458,7 @@ async function toggleInativarPaciente(){
   const p=pacs.find(x=>x.id==cpid);if(!p)return;
   const novoStatus=!p.inativo;
   try{
-  const r=await fetch(SB+'/rest/v1/pacientes?id=eq.'+cpid,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({inativo:novoStatus})});
+  const r=await fetchSB(SB+'/rest/v1/pacientes?id=eq.'+cpid,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({inativo:novoStatus})});
   if(r.ok||r.status===204){
   p.inativo=novoStatus;
 
@@ -1494,8 +1494,8 @@ async function deletar(){
   const btn=document.getElementById('btndel');
   btn.disabled=true;btn.innerHTML='<div class="spin" class="spini"></div> Excluindo…';
   try{
-  await fetch(SB+'/rest/v1/sessoes?paciente_id=eq.'+cpid,{method:'DELETE',headers:getH()});
-  await fetch(SB+'/rest/v1/pacientes?id=eq.'+cpid,{method:'DELETE',headers:getH()});
+  await fetchSB(SB+'/rest/v1/sessoes?paciente_id=eq.'+cpid,{method:'DELETE',headers:getH()});
+  await fetchSB(SB+'/rest/v1/pacientes?id=eq.'+cpid,{method:'DELETE',headers:getH()});
   sess=sess.filter(s=>s.paciente_id!=cpid);
   allS=allS.filter(s=>s.paciente_id!=cpid);
   pacs=pacs.filter(x=>x.id!=cpid);
@@ -1613,7 +1613,7 @@ async function gerarResumoIA(s,p,el){
       el.textContent=resumo;
       const idx=sess.findIndex(x=>x.id==s.id);if(idx>-1)sess[idx].resumo_ia=resumo;
       const idx2=allS.findIndex(x=>x.id==s.id);if(idx2>-1)allS[idx2].resumo_ia=resumo;
-      fetch(SB+'/rest/v1/sessoes?id=eq.'+s.id,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({resumo_ia:resumo})});
+      fetchSB(SB+'/rest/v1/sessoes?id=eq.'+s.id,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({resumo_ia:resumo})});
       return;
     }
   }
@@ -1633,7 +1633,7 @@ async function deletarSessao(){
   btn.disabled=true;btn.textContent='Apagando…';
   try{
   const s=sess.find(x=>x.id==csid);
-  const r=await fetch(SB+'/rest/v1/sessoes?id=eq.'+csid,{method:'DELETE',headers:getH()});
+  const r=await fetchSB(SB+'/rest/v1/sessoes?id=eq.'+csid,{method:'DELETE',headers:getH()});
   if(r.ok||r.status===204){
     sess=sess.filter(x=>x.id!==csid);
     allS=allS.filter(x=>x.id!==csid);
@@ -1667,7 +1667,7 @@ async function excluirSessaoDireta(id){
   });
   if(!ok)return;
   try{
-    const r=await fetch(SB+'/rest/v1/sessoes?id=eq.'+id,{method:'DELETE',headers:getH()});
+    const r=await fetchSB(SB+'/rest/v1/sessoes?id=eq.'+id,{method:'DELETE',headers:getH()});
     if(r.ok||r.status===204){
       sess=sess.filter(x=>x.id!==id);
       allS=allS.filter(x=>x.id!==id);
@@ -1753,21 +1753,21 @@ async function salvar(){
     status_sessao:'realizada'
   };
   console.log('[CatherFlow] PATCH body:', patchBody);
-  let r=await fetch(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:hPatch,body:JSON.stringify(patchBody)});
+  let r=await fetchSB(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:hPatch,body:JSON.stringify(patchBody)});
   if(!r.ok){
     const errt=await r.text();
     console.warn('[CatherFlow] PATCH 400 t1:',errt);
     // Fallback sem campos financeiros se não existirem na tabela
     delete patchBody.valor;
     delete patchBody.status_pagamento;
-    r=await fetch(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:hPatch,body:JSON.stringify(patchBody)});
+    r=await fetchSB(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:hPatch,body:JSON.stringify(patchBody)});
   }
   if(!r.ok){
     const errt2=await r.text();
     console.warn('[CatherFlow] PATCH 400 t2:',errt2);
     // Fallback mínimo
     const minimal={status_sessao:'realizada',data_sessao:dv,hora:horario||null,queixas_principais:pl.queixas_principais||null,intervencoes:pl.intervencoes||null,evolucao:pl.evolucao||null};
-    r=await fetch(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:hPatch,body:JSON.stringify(minimal)});
+    r=await fetchSB(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:hPatch,body:JSON.stringify(minimal)});
   }
   if(r.ok||r.status===204){
   console.log('[CatherFlow] PATCH OK - atualizando dados locais');
@@ -1792,7 +1792,7 @@ async function salvar(){
       const n8nd=await n8nr.json();
       const resumo=n8nd.resumo_ia||n8nd.resumo||n8nd.summary||n8nd.output||'';
       if(resumo){
-        await fetch(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({resumo_ia:resumo})});
+        await fetchSB(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({resumo_ia:resumo})});
         const idx3=sess.findIndex(s=>s.id===editId);if(idx3>-1)sess[idx3].resumo_ia=resumo;
         const idx4=allS.findIndex(s=>s.id===editId);if(idx4>-1)allS[idx4].resumo_ia=resumo;
         toast('✓ Resumo IA gerado!');
@@ -1841,7 +1841,7 @@ async function salvar(){
       if(rd.id)sessaoId=rd.id;
       else{
         try{
-          const check=await fetch(SB+'/rest/v1/sessoes?paciente_id=eq.'+cpid+'&data_sessao=eq.'+dv+'&numero_sessao=eq.'+numSessao+'&order=created_at.desc&limit=1',{headers:getH()});
+          const check=await fetchSB(SB+'/rest/v1/sessoes?paciente_id=eq.'+cpid+'&data_sessao=eq.'+dv+'&numero_sessao=eq.'+numSessao+'&order=created_at.desc&limit=1',{headers:getH()});
           if(check.ok){const cd=await check.json();if(cd[0]?.id)sessaoId=cd[0].id;}
         }catch(e3){}
       }
@@ -1849,7 +1849,7 @@ async function salvar(){
   }catch(e){
     console.warn('[CatherFlow] N8N erro, salvando direto:',e);
     try{
-      const sbr=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify({...n8nPayload,status_sessao:'realizada'})});
+      const sbr=await fetchSB(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify({...n8nPayload,status_sessao:'realizada'})});
       if(sbr.ok){const sbd=await sbr.json();const saved=Array.isArray(sbd)?sbd[0]:sbd;if(saved?.id)sessaoId=saved.id;}
     }catch(e2){}
   }
@@ -1931,7 +1931,7 @@ async function cancelarAgendamento(sessaoId){
   const ok=await cfConfirm({icon:'❌',title:'Cancelar Agendamento',text:'Cancelar sessão com <strong>'+esc(nome)+'</strong>?<br><br><span style="color:var(--muted);font-size:.78rem">'+fd(s.data_sessao)+((s.horario||s.hora)?' às '+(s.horario||s.hora).substring(0,5):'')+'</span>',okLabel:'Sim, cancelar',okClass:'btnd',cancelLabel:'Voltar'});
   if(!ok)return;
   try{
-    const r=await fetch(SB+'/rest/v1/sessoes?id=eq.'+sessaoId,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({status:'cancelada',status_sessao:'cancelada'})});
+    const r=await fetchSB(SB+'/rest/v1/sessoes?id=eq.'+sessaoId,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({status:'cancelada',status_sessao:'cancelada'})});
     if(r.ok||r.status===204){
       const idx=sess.findIndex(x=>x.id==sessaoId);
       if(idx>-1){sess[idx].status_sessao='cancelada';sess[idx].status='cancelada';}
@@ -1979,7 +1979,7 @@ async function cadastrar(){
   if(nasc)data.data_nascimento=nasc;
 
   try{
-  const r=await fetch(SB+'/rest/v1/pacientes',{method:'POST',headers:getH(),body:JSON.stringify(data)});
+  const r=await fetchSB(SB+'/rest/v1/pacientes',{method:'POST',headers:getH(),body:JSON.stringify(data)});
   console.log('[CatherFlow] cadastrar status:',r.status);
   if(!r.ok){
   const txt=await r.text();
@@ -2091,7 +2091,7 @@ async function confirmarNovaSessao(){
       const pd={nome,user_id:currentUser.id};
       const tel=document.getElementById('ns2-tel').value;if(tel)pd.telefone=tel;
       const nasc=document.getElementById('ns2-nasc').value;if(nasc)pd.data_nascimento=nasc;
-      const pr=await fetch(SB+'/rest/v1/pacientes',{method:'POST',headers:getH(),body:JSON.stringify(pd)});
+      const pr=await fetchSB(SB+'/rest/v1/pacientes',{method:'POST',headers:getH(),body:JSON.stringify(pd)});
       if(!pr.ok){toast('✗ Erro ao cadastrar paciente: '+pr.status);btn.disabled=false;btn.textContent='Cadastrar e Agendar';return;}
       const novoPac=await pr.json();const np=Array.isArray(novoPac)?novoPac[0]:novoPac;
       pacs.push({...pd,...np,created_at:np.created_at||new Date().toISOString()});
@@ -2107,10 +2107,10 @@ async function confirmarNovaSessao(){
 
     const numSessaoC=allS.filter(s=>s.paciente_id==pacId).length+1;
     const payload={paciente_id:pacId,user_id:currentUser.id,data_sessao:data,hora:hora||null,numero_sessao:numSessaoC,status_sessao:'agendada'};
-    let r=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(payload)});
+    let r=await fetchSB(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(payload)});
     if(!r.ok){
       const p2={paciente_id:pacId,user_id:currentUser.id,data_sessao:data,hora:hora||null,status_sessao:'agendada'};
-      r=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(p2)});
+      r=await fetchSB(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(p2)});
     }
     if(!r.ok){const t=await r.text();toast('✗ Erro ao agendar: '+t.substring(0,80));btn.disabled=false;btn.textContent='Agendar Sessão';return;}
 
@@ -2388,10 +2388,10 @@ async function agendarConsulta(){
   const payload={paciente_id:pacId,user_id:currentUser.id,data_sessao:data,hora:horario||null,numero_sessao:numSessaoNova,status_sessao:'agendada'};
 
   try{
-    let r=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(payload)});
+    let r=await fetchSB(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(payload)});
     if(!r.ok){
       const p2={paciente_id:pacId,user_id:currentUser.id,data_sessao:data,hora:horario||null,status_sessao:'agendada'};
-      r=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(p2)});
+      r=await fetchSB(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(p2)});
     }
     if(!r.ok){toast('✗ Erro ao agendar: '+(await r.text()).substring(0,80));btn.disabled=false;btn.innerHTML=orig;return;}
     const saved=await r.json();const s=Array.isArray(saved)?saved[0]:saved;
@@ -2762,6 +2762,19 @@ function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove
 let currentUser=null;
 let authToken=null;
 
+async function fetchSB(url, options={}){
+  options.headers={...getH(),...(options.headers||{})};
+  let r=await fetch(url,options);
+  if(r.status===401){
+    const ok=await refreshSession();
+    if(ok){
+      options.headers={...getH(),...(options.headers||{})};
+      r=await fetch(url,options);
+    }
+  }
+  return r;
+}
+
 function getH(){
   const tok=authToken||SK;
   return{'apikey':SK,'Authorization':'Bearer '+tok,'Content-Type':'application/json','Accept':'application/json','Prefer':'return=representation'};
@@ -2781,7 +2794,7 @@ function isVisivel(s){
 async function carregarSessoes(){
   if(!currentUser?.id)return;
   try{
-    const r=await fetch(SB+'/rest/v1/sessoes?user_id=eq.'+currentUser.id+'&order=data_sessao.desc',{headers:getH()});
+    const r=await fetchSB(SB+'/rest/v1/sessoes?user_id=eq.'+currentUser.id+'&order=data_sessao.desc',{headers:getH()});
     if(!r.ok)return;
     sess=await r.json();
     allS=[...sess];
@@ -2839,7 +2852,7 @@ async function doLogin(){
   if(!email||!senha){errEl.textContent='Preencha e-mail e senha.';return;}
   btn.disabled=true;btn.textContent='Entrando…';errEl.textContent='';
   try{
-  const r=await fetch(SB+'/auth/v1/token?grant_type=password',{
+  const r=await fetchSB(SB+'/auth/v1/token?grant_type=password',{
   method:'POST',
   headers:{'apikey':SK,'Content-Type':'application/json'},
   body:JSON.stringify({email,password:senha})
@@ -2865,7 +2878,7 @@ async function doRegistro(){
   if(senha.length<6){errEl.textContent='Senha precisa ter pelo menos 6 caracteres.';return;}
   btn.disabled=true;btn.textContent='Criando conta…';errEl.textContent='';
   try{
-  const r=await fetch(SB+'/auth/v1/signup',{
+  const r=await fetchSB(SB+'/auth/v1/signup',{
   method:'POST',
   headers:{'apikey':SK,'Content-Type':'application/json'},
   body:JSON.stringify({email,password:senha,data:{nome,crp}})
@@ -2887,7 +2900,7 @@ async function doRegistro(){
 
 async function doLogout(){
   try{
-  await fetch(SB+'/auth/v1/logout',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+(authToken||SK)}});
+  await fetchSB(SB+'/auth/v1/logout',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+(authToken||SK)}});
   }catch(e){}
   authToken=null;currentUser=null;
   _sDel('catherflow_token');
@@ -2901,7 +2914,7 @@ async function refreshSession(){
   const rt=_sGet('catherflow_refresh');
   if(!rt)return false;
   try{
-  const r=await fetch(SB+'/auth/v1/token?grant_type=refresh_token',{
+  const r=await fetchSB(SB+'/auth/v1/token?grant_type=refresh_token',{
   method:'POST',
   headers:{'apikey':SK,'Content-Type':'application/json'},
   body:JSON.stringify({refresh_token:rt})
@@ -2944,7 +2957,7 @@ async function doEsqueciSenha(){
   const email=document.getElementById('le').value.trim();
   if(!email){document.getElementById('lerr').textContent='Digite seu e-mail acima primeiro.';return;}
   try{
-  await fetch(SB+'/auth/v1/recover',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email})});
+  await fetchSB(SB+'/auth/v1/recover',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email})});
   document.getElementById('lerr').style.color='#059669';
   document.getElementById('lerr').textContent='✓ E-mail de recuperação enviado!';
   }catch(e){document.getElementById('lerr').textContent='Erro ao enviar e-mail.';}
@@ -3047,8 +3060,8 @@ async function loadAll(){
   setDB('loading','Carregando…');
   try{
     const [rp,rs]=await Promise.all([
-      fetch(SB+'/rest/v1/pacientes?user_id=eq.'+currentUser.id+'&order=created_at.desc',{headers:getH()}),
-      fetch(SB+'/rest/v1/sessoes?user_id=eq.'+currentUser.id+'&order=data_sessao.desc',{headers:getH()})
+      fetchSB(SB+'/rest/v1/pacientes?user_id=eq.'+currentUser.id+'&order=created_at.desc',{headers:getH()}),
+      fetchSB(SB+'/rest/v1/sessoes?user_id=eq.'+currentUser.id+'&order=data_sessao.desc',{headers:getH()})
     ]);
     if(!rp.ok||!rs.ok){
       setDB('error','Erro ao carregar');
