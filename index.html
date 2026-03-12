@@ -2049,10 +2049,10 @@ function abrirNovaSessaoParaPaciente(pacId){
     if(av){av.textContent=ini(p.nome);av.style.background=c;}
   }
   cpid=pacId;
-  document.getElementById('ns2-data').value=hojeStr();
-  document.getElementById('ns2-hora').value='14:00';
-  document.getElementById('nova-sess-titulo').textContent='📅 Nova Sessão';
-  document.getElementById('nova-sess-sub').textContent=p?p.nome:'';
+  const _d=document.getElementById('ns2-data');if(_d)_d.value=hojeStr();
+  const _h=document.getElementById('ns2-hora');if(_h)_h.value='14:00';
+  const _t=document.getElementById('nova-sess-titulo');if(_t)_t.textContent='📅 Nova Sessão';
+  const _s=document.getElementById('nova-sess-sub');if(_s)_s.textContent=p?p.nome:'';
   openM('m-nova-sessao');
 }
 
@@ -2678,7 +2678,7 @@ function selectDay(d){
   rCal();rAgenda();
 }
 function chMonth(d){cm+=d;if(cm>11){cm=0;cy++;}if(cm<0){cm=11;cy--;}selDay=null;selWeekMode=false;rCal();rAgenda();}
-function rSelPacs(){document.getElementById('nsp').innerHTML=pacs.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.nome)+'</option>').join('');}
+function rSelPacs(){const _nsp=document.getElementById('nsp');if(_nsp)_nsp.innerHTML=pacs.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.nome)+'</option>').join('');}
 
 function exportPDF(){
   const nome=document.getElementById('relnome')?.textContent||'Paciente';
