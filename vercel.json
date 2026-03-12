@@ -1,16 +1,14 @@
 {
   "version": 2,
   "name": "catherflow",
-  "builds": [
+  "rewrites": [
     {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
+      "source": "/api/n8n/:path*",
+      "destination": "https://mountainousmonitorlizard-n8n.cloudfy.live/:path*"
+    },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
