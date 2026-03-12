@@ -1604,26 +1604,21 @@ function openSM(id){
 
 async function gerarResumoIA(s,p,el){
   try{
-  const pl={paciente_id:s.paciente_id,paciente_nome:p?p.nome:'Paciente',user_id:currentUser?.id};
-  const r=await fetch(N8N_SUM,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pl)});
+  const pl={user_id:currentUser?.id,paciente_id:s.paciente_id,paciente_nome:p?p.nome:'Paciente',sessao_id:s.id,numero_sessao:s.numero_sessao,data_sessao:s.data_sessao,queixas_principais:s.queixas_principais||'',intervencoes:s.intervencoes||'',evolucao:s.evolucao||'',pontos_atencao:s.pontos_atencao||'',proximos_passos:s.proximos_passos||''};
+  const r=await fetch(N8N_REG,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pl)});
   if(r.ok){
-  const d=await r.json();
-  console.log('[CatherFlow] N8N resposta:', JSON.stringify(d));
-  const resumo=d.resumo_ia||d.resumo||d.summary||d.output||d.message||(Array.isArray(d)&&d[0]?d[0].resumo_ia||d[0].resumo||'':'');
-  if(resumo){
-  el.textContent=resumo;
-
-  const idx=sess.findIndex(x=>x.id==s.id);
-  if(idx>-1)sess[idx].resumo_ia=resumo;
-  const idx2=allS.findIndex(x=>x.id==s.id);
-  if(idx2>-1)allS[idx2].resumo_ia=resumo;
-  return;
-  }
+    const d=await r.json();
+    const resumo=d.resumo_ia||d.resumo||d.summary||d.output||'';
+    if(resumo){
+      el.textContent=resumo;
+      const idx=sess.findIndex(x=>x.id==s.id);if(idx>-1)sess[idx].resumo_ia=resumo;
+      const idx2=allS.findIndex(x=>x.id==s.id);if(idx2>-1)allS[idx2].resumo_ia=resumo;
+      fetch(SB+'/rest/v1/sessoes?id=eq.'+s.id,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({resumo_ia:resumo})});
+      return;
+    }
   }
   el.textContent=s.resumo_ia||'Resumo não disponível.';
-  }catch(e){
-  el.textContent=s.resumo_ia||'Resumo não disponível.';
-  }
+  }catch(e){el.textContent=s.resumo_ia||'Resumo não disponível.';}
 }
 
 function confirmarDeletarSessao(){
