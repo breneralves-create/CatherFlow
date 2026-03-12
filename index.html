@@ -1604,7 +1604,7 @@ function openSM(id){
 
 async function gerarResumoIA(s,p,el){
   try{
-  const pl={paciente_id:s.paciente_id,paciente_nome:p?p.nome:'Paciente'};
+  const pl={paciente_id:s.paciente_id,paciente_nome:p?p.nome:'Paciente',user_id:currentUser?.id};
   const r=await fetch(N8N_SUM,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pl)});
   if(r.ok){
   const d=await r.json();
@@ -1777,118 +1777,108 @@ async function salvar(){
   if(r.ok||r.status===204){
   console.log('[CatherFlow] PATCH OK - atualizando dados locais');
   const updFields={...pl,data_sessao:dv,numero_sessao:numSessao,status_sessao:'realizada',valor:valor,status_pagamento:status,duracao:duracao,tipo_sessao:tipo_sessao,anotacao_clinica:anotacao_clinica};
-  console.log('[CatherFlow] Dados atualizados:', updFields);
   const idx=sess.findIndex(s=>s.id===editId);
-  if(idx>-1){sess[idx]={...sess[idx],...updFields};console.log('[CatherFlow] sess atualizado:', sess[idx]);}
+  if(idx>-1){sess[idx]={...sess[idx],...updFields};}
   const idx2=allS.findIndex(s=>s.id===editId);
   if(idx2>-1){allS[idx2]={...allS[idx2],...updFields};}
   agend=agend.filter(a=>a.id!==editId);
-  
-  // NÃO limpa os campos financeiros após salvar edição - mantém os valores
   ['rsq','rsi','rse','rsp','rspr','rsanotacao'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('rsdata').value=hojeStr();
-  if(numInput)numInput.value='';
-  if(horInput)horInput.value='';
-  // REMOVIDO: não limpa valor e status para o usuário ver o que foi salvo
-  // if(valorInput)valorInput.value='';if(statusInput)statusInput.value='pendente';
-  
+  if(numInput)numInput.value='';if(horInput)horInput.value='';
   btn.disabled=false;btn.innerHTML='<svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Salvar Sessão';
   closeM('m-reg-sessao');
-  openP(cpid);
-  renderAll(); // Força renderização completa
-  carregarSessoes();
-  console.log('[CatherFlow] Dashboard atualizado. Valor:', valor, 'Status:', status);
-  toast('✓ Sessão salva! R$ '+valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+' - '+status);
+  openP(cpid);renderAll();carregarSessoes();
+  toast('✓ Sessão salva! Gerando resumo IA…');
+  // Gera resumo IA via N8N após salvar edição
+  try{
+    const n8nPl={...pl,user_id:currentUser?.id,numero_sessao:numSessao,data_sessao:dv,sessao_id:editId};
+    const n8nr=await fetch(N8N_REG,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(n8nPl)});
+    if(n8nr.ok){
+      const n8nd=await n8nr.json();
+      const resumo=n8nd.resumo_ia||n8nd.resumo||n8nd.summary||n8nd.output||'';
+      if(resumo){
+        await fetch(SB+'/rest/v1/sessoes?id=eq.'+editId,{method:'PATCH',headers:{...getH(),'Prefer':'return=minimal'},body:JSON.stringify({resumo_ia:resumo})});
+        const idx3=sess.findIndex(s=>s.id===editId);if(idx3>-1)sess[idx3].resumo_ia=resumo;
+        const idx4=allS.findIndex(s=>s.id===editId);if(idx4>-1)allS[idx4].resumo_ia=resumo;
+        toast('✓ Resumo IA gerado!');
+      }
+    }
+  }catch(e2){console.warn('[CatherFlow] N8N resumo erro:',e2);}
   } else {let eb='';try{eb=(await r.text()).substring(0,200);}catch(e2){}console.error('[CatherFlow] PATCH err:',eb);toast('✗ Erro '+r.status+': '+eb);}
   }catch(e){toast('✗ Erro: '+e.message);}
   btn.disabled=false;btn.innerHTML='<svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Salvar Sessão';
   return;
   }
 
-  // --- POST: nova sessão sem agendamento prévio ---
+  // --- POST: nova sessão ---
   btn.disabled=true;
-  btn.innerHTML='<div class="spin" class="spini"></div> Salvando…';
+  btn.innerHTML='<div class="spin" class="spini"></div> Salvando e gerando resumo IA…';
+
+  const n8nPayload={
+    user_id:currentUser?.id,
+    paciente_id:cpid,
+    paciente_nome:p.nome,
+    data_sessao:dv,
+    hora:horario||null,
+    numero_sessao:numSessao,
+    valor:valor||null,
+    status_pagamento:status||'pendente',
+    duracao:duracao||null,
+    tipo_sessao:tipo_sessao||'presencial',
+    anotacao_clinica:anotacao_clinica||null,
+    queixas_principais:pl.queixas_principais||null,
+    intervencoes:pl.intervencoes||null,
+    evolucao:pl.evolucao||null,
+    pontos_atencao:pl.pontos_atencao||null,
+    proximos_passos:pl.proximos_passos||null
+  };
 
   let resumo_ia='';
-  let ok=false;
-  try{
-  const r=await fetch(N8N_REG,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pl)});
-  ok=r.ok;
-  if(ok){try{const rd=await r.json();resumo_ia=rd.resumo_ia||rd.resumo||rd.summary||rd.output||rd.message||(Array.isArray(rd)&&rd[0]?rd[0].resumo_ia||rd[0].resumo||'':'');}catch(e2){}}
-  }catch(e){console.warn('[CatherFlow] n8n erro:',e);}
-
   let sessaoId='l'+Date.now();
+  let ok=false;
+
   try{
-  // Campos que tentamos salvar — do mais completo ao mais simples
-  const sbPayload={
-  paciente_id:cpid,
-  user_id:currentUser?.id,
-  data_sessao:dv,
-  numero_sessao:numSessao,
-  hora:horario||null,
-  status_sessao:'realizada',
-  valor:valor||null,
-  status_pagamento:status||'pendente',
-  duracao:duracao||null,
-  tipo_sessao:tipo_sessao||'presencial',
-  anotacao_clinica:anotacao_clinica||null,
-  queixas_principais:pl.queixas_principais||null,
-  intervencoes:pl.intervencoes||null,
-  evolucao:pl.evolucao||null,
-  pontos_atencao:pl.pontos_atencao||null,
-  proximos_passos:pl.proximos_passos||null,
-  resumo_ia:resumo_ia||null
-  };
-  console.log('[CatherFlow] POST payload:', sbPayload);
-
-  // Tenta POST completo; se 400, remove campos opcionais até funcionar
-  let sbr=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(sbPayload)});
-  if(!sbr.ok){
-    const errt=await sbr.text();
-    console.warn('[CatherFlow] POST 400 tentativa 1:',errt);
-    // Remove campos que podem não existir na tabela
-    delete sbPayload.resumo_ia;
-    delete sbPayload.valor;
-    delete sbPayload.status_pagamento;
-    sbr=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(sbPayload)});
+    const r=await fetch(N8N_REG,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(n8nPayload)});
+    ok=r.ok;
+    if(ok){
+      const rd=await r.json();
+      resumo_ia=rd.resumo_ia||rd.resumo||rd.summary||rd.output||'';
+      if(rd.id)sessaoId=rd.id;
+      else{
+        try{
+          const check=await fetch(SB+'/rest/v1/sessoes?paciente_id=eq.'+cpid+'&data_sessao=eq.'+dv+'&numero_sessao=eq.'+numSessao+'&order=created_at.desc&limit=1',{headers:getH()});
+          if(check.ok){const cd=await check.json();if(cd[0]?.id)sessaoId=cd[0].id;}
+        }catch(e3){}
+      }
+    }
+  }catch(e){
+    console.warn('[CatherFlow] N8N erro, salvando direto:',e);
+    try{
+      const sbr=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify({...n8nPayload,status_sessao:'realizada'})});
+      if(sbr.ok){const sbd=await sbr.json();const saved=Array.isArray(sbd)?sbd[0]:sbd;if(saved?.id)sessaoId=saved.id;}
+    }catch(e2){}
   }
-  if(!sbr.ok){
-    const errt2=await sbr.text();
-    console.warn('[CatherFlow] POST 400 tentativa 2:',errt2);
-    // Fallback mínimo — só campos essenciais
-    const minimal={paciente_id:cpid,user_id:currentUser?.id,data_sessao:dv,numero_sessao:numSessao,hora:horario||null,status_sessao:'realizada'};
-    sbr=await fetch(SB+'/rest/v1/sessoes',{method:'POST',headers:getH(),body:JSON.stringify(minimal)});
-  }
-  if(sbr.ok){const sbd=await sbr.json();const saved=Array.isArray(sbd)?sbd[0]:sbd;if(saved?.id)sessaoId=saved.id;}
-  else{console.error('[CatherFlow] POST falhou todas tentativas:',await sbr.text());}
-  }catch(e2){console.warn('[CatherFlow] Supabase sessao erro:',e2);}
 
-  const nova={id:sessaoId,paciente_id:cpid,numero_sessao:numSessao,tipo:'Sessão registrada',status_sessao:'realizada',valor:valor,status_pagamento:status,duracao:duracao,tipo_sessao:tipo_sessao,anotacao_clinica:anotacao_clinica,resumo_ia,...pl};
-  console.log('[CatherFlow] Nova sessão criada localmente:', nova);
+  const nova={id:sessaoId,paciente_id:cpid,numero_sessao:numSessao,tipo:'Sessão registrada',status_sessao:'realizada',valor:valor,status_pagamento:status,duracao:duracao,tipo_sessao:tipo_sessao,anotacao_clinica:anotacao_clinica,resumo_ia:resumo_ia,...pl};
   sess.unshift(nova);allS.unshift(nova);
 
   ['rsq','rsi','rse','rsp','rspr','rsanotacao'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('rsdata').value=hojeStr();
-  if(numInput)numInput.value='';
-  if(horInput)horInput.value='';
-  if(valorInput)valorInput.value='';
-  if(statusInput)statusInput.value='pendente';
+  if(numInput)numInput.value='';if(horInput)horInput.value='';
+  if(valorInput)valorInput.value='';if(statusInput)statusInput.value='pendente';
   const durEl=document.getElementById('rsduracao');if(durEl)durEl.value='';
   const tipoEl=document.getElementById('rstipo');if(tipoEl)tipoEl.value='presencial';
 
   btn.disabled=false;
   btn.innerHTML='<svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Salvar Sessão';
   closeM('m-reg-sessao');
-  openP(cpid);
-  renderAll(); // Força atualização completa
-  carregarSessoes();
-  console.log('[CatherFlow] Nova sessão criada. Dashboard atualizado.');
+  openP(cpid);renderAll();carregarSessoes();
   openSM(sessaoId);
 
-  const msgFin=valor>0?' (R$ '+valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+' - '+status+')':'';
-  if(sessaoId.startsWith('l')){toast('⚠ Salvo localmente'+msgFin+' — verifique conexão com Supabase');}
-  else if(ok){toast(resumo_ia?'✓ Sessão salva com resumo IA!'+msgFin:'✓ Sessão salva'+msgFin+'! Gerando resumo IA…');}
-  else{toast('✓ Sessão salva'+msgFin+'! (n8n offline — sem resumo IA)');}
+  const msgFin=valor>0?' · R$ '+valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+' ('+status+')':'';
+  if(ok&&resumo_ia){toast('✓ Sessão salva com resumo IA!'+msgFin);}
+  else if(ok){toast('✓ Sessão salva!'+msgFin);}
+  else{toast('⚠ Sessão salva localmente — N8N offline');}
 }
 
 function toggleCamposEstruturados(){
@@ -2262,6 +2252,7 @@ async function gerarRelatorioSelecionado(){
   const payload={
   paciente_id:cpid,
   paciente_nome:p.nome,
+  user_id:currentUser?.id,
   sessoes_ids:ids,
   sessoes:sessSel.map(s=>({
   numero:s.numero_sessao,
